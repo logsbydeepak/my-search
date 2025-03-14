@@ -1,4 +1,4 @@
-import { ActionPanel, Action, List, open, showToast, Toast, getDefaultApplication } from "@raycast/api";
+import { ActionPanel, Action, List, open, showToast, Toast, getDefaultApplication, Application } from "@raycast/api";
 import { useFetch } from "@raycast/utils";
 import { nanoid } from "nanoid";
 
@@ -8,13 +8,28 @@ import { bangs } from "./bang";
 export default function Command() {
   const [searchText, setSearchText] = React.useState("");
   const [filteredList, filterList] = React.useState<{ result: string; key: string }[]>([]);
-
+  const [defaultApplication, setDefaultApplication] = React.useState<Application | null>(null);
   const { isLoading, data } = useFetch(
     `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(searchText)}`,
     {
       keepPreviousData: true,
     },
   );
+
+  React.useEffect(() => {
+    async function handle() {
+      try {
+        const application = await getDefaultApplication("https://google.com");
+        setDefaultApplication(application);
+      } catch (error) {
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to get default application",
+        });
+      }
+    }
+    handle();
+  }, []);
 
   React.useEffect(() => {
     try {
@@ -44,19 +59,25 @@ export default function Command() {
   }, [data]);
 
   async function handleAction(searchText: string) {
-    const application = await getDefaultApplication("https://google.com");
+    if (!defaultApplication) {
+      await showToast({
+        style: Toast.Style.Failure,
+        title: "Failed to get default application",
+      });
+      return;
+    }
 
     const domain = handleDomain(searchText);
     if (domain) {
-      await open(domain, application.path);
+      await open(domain, defaultApplication.path);
       return;
     }
 
     const searchUrl = getBangredirectUrl(searchText);
     if (searchUrl) {
-      await open(searchUrl, application.path);
+      await open(searchUrl, defaultApplication.path);
     } else {
-      await open(`https://www.google.com/search?q=${searchText}`, application.path);
+      await open(`https://www.google.com/search?q=${searchText}`, defaultApplication.path);
     }
   }
 
