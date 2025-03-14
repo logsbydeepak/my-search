@@ -1,14 +1,13 @@
 import { ActionPanel, Action, List, open, showToast, Toast, getDefaultApplication } from "@raycast/api";
 import { useFetch } from "@raycast/utils";
+import { nanoid } from "nanoid";
 
 import React from "react";
 import { bangs } from "./bang";
 
-const items: string[] = [];
-
 export default function Command() {
   const [searchText, setSearchText] = React.useState("");
-  const [filteredList, filterList] = React.useState(items);
+  const [filteredList, filterList] = React.useState<{ result: string; key: string }[]>([]);
 
   const { isLoading, data } = useFetch(
     `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(searchText)}`,
@@ -24,9 +23,18 @@ export default function Command() {
         filterList([]);
         return;
       }
-      const result = parsedData[1];
+      const result = parsedData[1] as string[];
       result.push(parsedData[0]);
-      filterList(result);
+      result.forEach(() => {});
+
+      filterList(() => {
+        return result.map((i) => {
+          return {
+            result: i,
+            key: nanoid(),
+          };
+        });
+      });
     } catch (error) {
       showToast({
         style: Toast.Style.Failure,
@@ -34,8 +42,6 @@ export default function Command() {
       });
     }
   }, [data]);
-
-  React.useEffect(() => {}, []);
 
   async function handleAction(searchText: string) {
     const application = await getDefaultApplication("https://google.com");
@@ -65,7 +71,7 @@ export default function Command() {
     >
       {searchText.length !== 0 && (
         <List.Item
-          key={"default"}
+          key={nanoid()}
           title={searchText}
           subtitle="default search"
           actions={
@@ -78,18 +84,18 @@ export default function Command() {
 
       {filteredList.map((item) => (
         <List.Item
-          key={item}
-          title={item}
+          key={item.key}
+          title={item.result}
           actions={
             <ActionPanel>
-              <Action title="Select" onAction={() => handleAction(item)} />
+              <Action title="Select" onAction={() => handleAction(item.result)} />
               <Action
                 title="Fill Search"
                 shortcut={{
                   modifiers: [],
                   key: "tab",
                 }}
-                onAction={() => setSearchText(item)}
+                onAction={() => setSearchText(item.result)}
               />
             </ActionPanel>
           }
