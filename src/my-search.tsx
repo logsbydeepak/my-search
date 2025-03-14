@@ -7,7 +7,7 @@ import { bangs } from "./bang";
 
 export default function Command() {
   const [searchText, setSearchText] = React.useState("");
-  const [filteredList, filterList] = React.useState<{ result: string; key: string }[]>([]);
+  const [filteredList, setFilteredList] = React.useState<{ result: string; key: string }[]>([]);
   const [defaultApplication, setDefaultApplication] = React.useState<Application | null>(null);
   const { isLoading, data } = useFetch(
     `https://suggestqueries.google.com/complete/search?client=firefox&q=${encodeURIComponent(searchText)}`,
@@ -32,30 +32,32 @@ export default function Command() {
   }, []);
 
   React.useEffect(() => {
-    try {
-      const parsedData = JSON.parse(data as string);
-      if (!parsedData.length || !parsedData[1].length) {
-        filterList([]);
-        return;
-      }
-      const result = parsedData[1] as string[];
-      result.push(parsedData[0]);
-      result.forEach(() => {});
+    async function handle() {
+      try {
+        const parsedData = JSON.parse(data as string);
+        if (!parsedData.length || !parsedData[1].length) {
+          setFilteredList([]);
+          return;
+        }
+        const result = parsedData[1] as string[];
+        result.push(parsedData[0]);
 
-      filterList(() => {
-        return result.map((i) => {
-          return {
-            result: i,
-            key: nanoid(),
-          };
+        setFilteredList(() => {
+          return result.map((i) => {
+            return {
+              result: i,
+              key: nanoid(),
+            };
+          });
         });
-      });
-    } catch (error) {
-      showToast({
-        style: Toast.Style.Failure,
-        title: "Failed to parse data",
-      });
+      } catch (error) {
+        await showToast({
+          style: Toast.Style.Failure,
+          title: "Failed to parse data",
+        });
+      }
     }
+    handle();
   }, [data]);
 
   async function handleAction(searchText: string) {
